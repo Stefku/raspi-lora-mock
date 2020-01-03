@@ -34,6 +34,8 @@
 #include <signal.h>
 #include <unistd.h>
 #include <time.h>
+#include <string>
+#include <iostream>
  
 #include <lmic.h>
 #include <hal/hal.h>
@@ -58,7 +60,7 @@ void os_getDevEui (u1_t* buf) { memcpy_P(buf, DEVEUI, 16);}
 
 void os_getDevKey (u1_t* buf) {  memcpy_P(buf, APPKEY, 32);}
 
-static uint8_t mydata[] = "Raspi TESTING!";
+static std::string mydata2 = "AAB";
 static osjob_t sendjob;
 
 // Schedule TX every this many seconds (might become longer due to duty)
@@ -111,9 +113,17 @@ void do_send(osjob_t* j) {
     if (LMIC.opmode & OP_TXRXPEND) {
         printf("OP_TXRXPEND, not sending\n");
     } else {
+	std::cout << "convert data..." << std::endl;
         digitalWrite(RF_LED_PIN, HIGH);
+
+	uint8_t data[mydata2.size()];
+	for (int i=0; i<mydata2.size(); i++) {
+		data[i] = mydata2[i];
+	}
         // Prepare upstream data transmission at the next possible time.
-        LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
+	printf("try to send %d bytes\n", sizeof(data));
+        LMIC_setTxData2(1, data, sizeof(data), 0);
+
         printf("Packet queued\n");
     }
     // Next TX is scheduled after TX_COMPLETE event.
