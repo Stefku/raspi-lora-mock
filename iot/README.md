@@ -1,15 +1,16 @@
-Config like deveui, appeui and appkey must be provided externally, since
+Config like deveui, appeui and appkey must be provided externally to keep them privat.
+
+In iot/ttn-otaa.cpp.
+```
 #include "../../config.h"
-'''
-#include "../../config.h"
-'''
+```
 
 Create a file config.h with the right content:
 
-'''
+```
 #include <lmic.h>
 
 static const u1_t PROGMEM APPEUI[16] =  {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // least significant bit first!
 static const u1_t PROGMEM DEVEUI[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // least significant bit first!
 static const u1_t PROGMEM APPKEY[32] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-'''
+```
