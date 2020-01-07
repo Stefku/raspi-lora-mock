@@ -63,7 +63,7 @@ class ServerHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.send_response(404)
         self.send_header('Content-type','text/html')
         self.end_headers()
-        self.wfile.write("path not found")
+        self.wfile.write("path not found\navailable:\nGET /command\nPOST /command\nDELETE /command\n")
 
 Handler = ServerHandler
 
