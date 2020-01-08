@@ -113,7 +113,7 @@ void do_send(osjob_t* j) {
     }
     // Prepare upstream data transmission at the next possible time.
     printf("  try to send %s with %d bytes\n", payload, sizeof(data));
-    LMIC_setTxData2(1, data, sizeof(data), 0);
+    LMIC_setTxData2(command.port, data, sizeof(data), 0);
     scheduleTask(TX_INTERVAL);
 
     printf("  Packet queued\n");
@@ -167,16 +167,16 @@ void onEvent (ev_t ev) {
               printf("%s Received ack\n", strTime);
             }
             if (LMIC.dataLen) {
-              printf("%s Received %d bytes of payload\n", strTime, LMIC.dataLen);
-              uint8_t *ptr = LMIC.frame;
-              for (uint8_t i = 0; i < LMIC.dataLen; i++) {
+                  printf("%s Received %d bytes of payload\n", strTime, LMIC.dataLen);
+                  uint8_t *ptr = LMIC.frame;
+                  for (uint8_t i = 0; i < LMIC.dataLen; i++) {
 
-                    printf("  Address of LMIC.frame[%u] = %x\n", i, ptr );
-                    printf("  Value of LMIC.frame[%u] = %d\n", i, *ptr );
+                        printf("  Address of LMIC.frame[%u] = %x\n", i, ptr );
+                        printf("  Value of LMIC.frame[%u] = %d\n", i, *ptr );
 
-                    /* move to the next location */
-                    ptr++;
-             }
+                        /* move to the next location */
+                        ptr++;
+                 }
             } else {
                 printf("  no data.\n");
                 scheduleTask(TX_INTERVAL);
