@@ -10,6 +10,8 @@
 #include <lmic.h>
 #include <hal/hal.h>
 
+#include "ttn-otaa.h"
+
 // APPEUI must be already defined
 void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 16);}
 
@@ -26,6 +28,7 @@ static osjob_t sendjob;
 const unsigned TX_INTERVAL = 60;
 
 unsigned IS_JOINED = 0;
+volatile unsigned scheduledTasks = 0;
 
 //Flag for Ctrl-C
 volatile sig_atomic_t force_exit = 0;
@@ -48,19 +51,28 @@ const lmic_pinmap lmic_pins = {
 #define RF_LED_PIN NOT_A_PIN  
 #endif
 
+void printTime() {
+    char strTime[16];
+    getSystemTime(strTime , sizeof(strTime));
+    printf("%s: ", strTime);
+}
+
 void do_send(osjob_t* j) {
     char strTime[16];
     getSystemTime(strTime , sizeof(strTime));
-    printf("%s: [0x%04x] - ", strTime, LMIC.opmode);
+    printf("%s: do_send scheduled tasks no %u with opmode:0x%04x - ", strTime, scheduledTasks, LMIC.opmode);
+    scheduledTasks -= 1;
 
     // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
         printf("OP_TXRXPEND: not sending\n");
+        scheduleTask(TX_INTERVAL);
         return;
     }
 
     if (LMIC.opmode & OP_JOINING) {
         printf("OP_JOINING: device joining in progress\n");
+        scheduleTask(TX_INTERVAL);
         return;
     }
 
@@ -68,7 +80,7 @@ void do_send(osjob_t* j) {
         uint8_t joinData[] = "loramock";
         printf("try to send %d bytes while joining\n", sizeof(joinData));
         LMIC_setTxData2(1, joinData, sizeof(joinData), 0);
-        os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(TX_INTERVAL), do_send);
+        scheduleTask(TX_INTERVAL);
         return;
     }
 
@@ -77,8 +89,8 @@ void do_send(osjob_t* j) {
                          (std::istreambuf_iterator<char>()) );
 
     if (content.size() <= 0) {
-        printf("no command found. Retry in %d seconds.\n", TX_INTERVAL);
-        os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(TX_INTERVAL), do_send);
+        printf("no command found. Retry in 5 seconds.\n");
+        scheduleTask(5);
         return;
     }
 
@@ -90,11 +102,11 @@ void do_send(osjob_t* j) {
         data[i] = content[i];
     }
     // Prepare upstream data transmission at the next possible time.
-    printf("try to send %d bytes\n", sizeof(data));
+    printf("  try to send %d bytes\n", sizeof(data));
     LMIC_setTxData2(1, data, sizeof(data), 0);
-    os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(TX_INTERVAL), do_send);
+    scheduleTask(TX_INTERVAL);
 
-    printf("Packet queued\n");
+    printf("  Packet queued\n");
     std::remove("command.txt");
     // Next TX is scheduled after TX_COMPLETE event.
 }
@@ -141,10 +153,23 @@ void onEvent (ev_t ev) {
         break;
         case EV_TXCOMPLETE:
             printf("EV_TXCOMPLETE (includes waiting for RX windows)\n");
-            if (LMIC.txrxFlags & TXRX_ACK)
+            if (LMIC.txrxFlags & TXRX_ACK) {
               printf("%s Received ack\n", strTime);
+            }
             if (LMIC.dataLen) {
               printf("%s Received %d bytes of payload\n", strTime, LMIC.dataLen);
+              uint8_t *ptr = LMIC.frame;
+              for (uint8_t i = 0; i < LMIC.dataLen; i++) {
+
+                    printf("  Address of LMIC.frame[%u] = %x\n", i, ptr );
+                    printf("  Value of LMIC.frame[%u] = %d\n", i, *ptr );
+
+                    /* move to the next location */
+                    ptr++;
+             }
+            } else {
+                printf("  no data.\n");
+                scheduleTask(TX_INTERVAL);
             }
         break;
         case EV_LOST_TSYNC:
@@ -167,6 +192,23 @@ void onEvent (ev_t ev) {
             printf("Unknown event\n");
         break;
     }
+}
+
+void scheduleTask(unsigned intervall) {
+    printTime();
+    scheduledTasks++;
+    /*
+    if (scheduledTasks > 1) {
+        // wait if a tasks currently started
+        usleep(1000000);
+    }
+    if (scheduledTasks > 1) {
+        printf("Don't schedule tasks, since %u tasks already scheduled.\n", scheduledTasks);
+        return;
+    }
+    */
+    printf("Schedule Task no %u with intervall %u\n", scheduledTasks, intervall);
+    os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(intervall), do_send);
 }
 
 /* ======================================================================
@@ -203,7 +245,7 @@ int main(void) {
     LMIC_reset();
 
     // Start job (sending automatically starts OTAA too)
-    do_send(&sendjob);
+    scheduleTask(0);
 
     while(!force_exit) {
       os_runloop_once();
