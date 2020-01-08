@@ -11,6 +11,7 @@
 #include <hal/hal.h>
 
 #include "ttn-otaa.h"
+#include "command.cpp"
 
 // APPEUI must be already defined
 void os_getArtEui (u1_t* buf) { memcpy_P(buf, APPEUI, 16);}
@@ -97,12 +98,21 @@ void do_send(osjob_t* j) {
     std::cout << "command found: ";
     std::cout << content << std::endl;
 
-    uint8_t data[content.size()];
-    for (int i=0; i<content.size(); i++) {
-        data[i] = content[i];
+    Command command = parseCommand(content);
+    if (command.valid == 0) {
+        printf("no valid command found. Try [port]:[payload]\n");
+        scheduleTask(5);
+        std::remove("command.txt");
+        return;
+    }
+    std::string payload = command.payload;
+
+    uint8_t data[payload.size()];
+    for (int i=0; i<payload.size(); i++) {
+        data[i] = payload[i];
     }
     // Prepare upstream data transmission at the next possible time.
-    printf("  try to send %d bytes\n", sizeof(data));
+    printf("  try to send %s with %d bytes\n", payload, sizeof(data));
     LMIC_setTxData2(1, data, sizeof(data), 0);
     scheduleTask(TX_INTERVAL);
 

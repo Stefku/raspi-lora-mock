@@ -36,4 +36,11 @@ ttn-otaa: ttn-otaa.o raspi.o radio.o oslmic.o lmic.o hal.o aes.o
 				$(CC) $^ $(LIBS) -o ttn-otaa
 
 clean:
-				rm -rf *.o ttn-otaa
+				rm -rf *.o ttn-otaa tests
+
+test: tests
+tests.o: tests.cpp
+				$(CC) $(CFLAGS) -c $(INCLUDE) $<
+
+tests: tests.o
+				$(CC) $^ $(LIBS) -o tests

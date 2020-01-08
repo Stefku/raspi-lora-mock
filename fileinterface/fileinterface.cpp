@@ -46,9 +46,9 @@ int main(void)
 {
 	test();
 	return 0;
- 
+
     printf("Waiting for commands in command.txt\n");
-    
+
     while(!force_exit) {
       check_file_2();
       usleep(1000000);
